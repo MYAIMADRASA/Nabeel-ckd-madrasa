@@ -328,7 +328,24 @@
 
 <div id="toast" class="toast"></div>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script>
+/* ==================================================================
+   FIREBASE SETUP
+================================================================== */
+const firebaseConfig = {
+  apiKey: "AIzaSyCMGux-gDNuWzJqnZtT4ihu_ZQgOpjglv4",
+  authDomain: "nabeel-ckd-madrasa.firebaseapp.com",
+  projectId: "nabeel-ckd-madrasa",
+  storageBucket: "nabeel-ckd-madrasa.firebasestorage.app",
+  messagingSenderId: "621396424831",
+  appId: "1:621396424831:web:069159f3b3b6e13b70674a",
+  measurementId: "G-94GXJX7X70"
+};
+firebase.initializeApp(firebaseConfig);
+const fsdb = firebase.firestore();
+
 /* ==================================================================
    STATE + STORAGE
 ================================================================== */
@@ -342,12 +359,16 @@ let currentAdminView = 'dashboard';
 
 async function storageGet(key, fallback){
   try{
-    const r = await window.storage.get(key, true);
-    return r && r.value ? JSON.parse(r.value) : fallback;
-  }catch(e){ return fallback; }
+    const doc = await fsdb.collection('madrasa').doc(key).get();
+    if(doc.exists){
+      const data = doc.data();
+      return data && data.value !== undefined ? data.value : fallback;
+    }
+    return fallback;
+  }catch(e){ console.error('storage get failed', key, e); return fallback; }
 }
 async function storageSet(key, value){
-  try{ await window.storage.set(key, JSON.stringify(value), true); return true; }
+  try{ await fsdb.collection('madrasa').doc(key).set({ value: value }); return true; }
   catch(e){ console.error('storage set failed', key, e); showToast('സേവ് ചെയ്യുന്നതിൽ പിശക് സംഭവിച്ചു'); return false; }
 }
 async function loadAllData(){
@@ -1046,16 +1067,7 @@ function downloadCertificate(name){
   link.href = canvas.toDataURL('PDF');
   link.click();
 }
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyCMGux-gDNuWzJqnZtT4ihu_ZQgOpjglv4",
-  authDomain: "nabeel-ckd-madrasa.firebaseapp.com",
-  projectId: "nabeel-ckd-madrasa",
-  storageBucket: "nabeel-ckd-madrasa.firebasestorage.app",
-  messagingSenderId: "621396424831",
-  appId: "1:621396424831:web:069159f3b3b6e13b70674a",
-  measurementId: "G-94GXJX7X70"
-};
+
 /* ==================================================================
    UTIL
 ================================================================== */
