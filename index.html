@@ -953,6 +953,12 @@
         <div class="desc">Result &amp; Certificate പരിശോധിക്കുക</div>
       </div>
     </div>
+
+    <div id="self-reg-link" style="margin-top:22px;">
+      <button onclick="showSelfRegistration()" style="background:rgba(228,194,112,0.12);border:1px solid rgba(228,194,112,0.4);color:var(--gold-light);padding:12px 26px;border-radius:999px;font-weight:600;font-size:.95rem;display:inline-flex;align-items:center;gap:10px;">
+        📝 NABIDINA പ്രോഗ്രാമുകൾക്ക് സ്വയം രജിസ്റ്റർ ചെയ്യുക
+      </button>
+    </div>
   </div>
 </div>
 
@@ -993,6 +999,50 @@
     </div>
     <div id="sp-err" class="sp-err hidden"></div>
     <div id="sp-result" class="sp-result hidden"></div>
+  </div>
+</div>
+
+<!-- ============ SELF REGISTRATION (PUBLIC, NO LOGIN NEEDED) ============ -->
+<div id="self-registration" class="hidden">
+  <div class="sp-container">
+    <button class="sp-back" onclick="goLanding()">✨ തിരികെ</button>
+    <div class="sp-header">
+      <span class="moon-icon">🌙</span>
+      <h1>NABIDINA SPECIAL 1448 / 2026</h1>
+      <div class="sub">സ്വയം രജിസ്ട്രേഷൻ</div>
+      <div class="divider"></div>
+    </div>
+    <div class="card">
+      <div class="form-grid">
+        <div class="field"><label>വിദ്യാർത്ഥിയുടെ പേര്</label><input id="self-reg-name" placeholder="പേര്"></div>
+        <div class="field"><label>ക്ലാസ്</label>
+          <select id="self-reg-class" onchange="onSelfRegClassChange(this.value)">
+            <option value="">-- തിരഞ്ഞെടുക്കുക --</option>
+            <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+            <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+            <option value="7">7</option><option value="8">8</option><option value="9">9</option>
+            <option value="10">10</option>
+          </select>
+        </div>
+        <div class="field"><label>വിഭാഗം (Auto)</label><input id="self-reg-category" readonly style="background:#f5f0e8;"></div>
+        <div class="field"><label>ലിംഗം</label>
+          <select id="self-reg-gender">
+            <option value="">-- തിരഞ്ഞെടുക്കുക --</option>
+            <option value="Boys">Boys</option>
+            <option value="Girls">Girls</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>📌 പ്രോഗ്രാമുകൾ തിരഞ്ഞെടുക്കുക</label>
+        <div class="program-checkbox-grid" id="self-reg-programs">
+          <div class="empty" style="padding:8px 0;">ആദ്യം ക്ലാസ് തിരഞ്ഞെടുക്കുക</div>
+        </div>
+      </div>
+      <div id="self-reg-msg" class="err-msg" style="display:none;"></div>
+      <button class="btn-primary" onclick="submitSelfRegistration()">📝 രജിസ്റ്റർ ചെയ്യുക</button>
+    </div>
+    <div id="self-reg-success" class="hidden card" style="text-align:center;"></div>
   </div>
 </div>
 
@@ -1053,8 +1103,8 @@ let DB = {
   users: {
     boys: { pin: '1234', name: 'Boys Leader' },
     girls: { pin: '5678', name: 'Girls Leader' },
-    usthad: { pin: '9012', name: 'Usthad' },
-    admin: { pin: '9530', name: 'Admin' }
+    usthad: { pin: '786313', name: 'Usthad' },
+    admin: { pin: '098530', name: 'Admin' }
   },
   settings: {
     nabiEnabled: true,
@@ -1225,13 +1275,19 @@ function updateNabiStatusUI(){
   document.getElementById('login-student')?.classList.remove('disabled');
   // Admin login always active
   document.getElementById('login-admin')?.classList.remove('disabled');
+  // Self-registration link only when NABIDINA is active
+  const selfRegBtn = document.querySelector('#self-reg-link button');
+  if(selfRegBtn){
+    selfRegBtn.style.opacity = enabled ? '1' : '.5';
+    selfRegBtn.style.pointerEvents = enabled ? 'auto' : 'none';
+  }
 }
 
 /* ==================================================================
    NAVIGATION
 ================================================================== */
 function hideAll(){
-  ['landing','admin-shell','student-portal'].forEach(id=>{
+  ['landing','admin-shell','student-portal','self-registration'].forEach(id=>{
     document.getElementById(id).classList.add('hidden');
   });
 }
@@ -1325,6 +1381,81 @@ function showStudentPortal(){
   document.getElementById('sp-err').classList.add('hidden');
   document.getElementById('sp-regno-input').value = '';
   refreshBrandLabels();
+}
+
+/* ==================================================================
+   SELF REGISTRATION - PUBLIC, NO LOGIN NEEDED
+================================================================== */
+function showSelfRegistration(){
+  if(!DB.settings.nabiEnabled){
+    showToast('❌ നബിദിനം പരിപാടി ഓഫാണ്. ദയവായി അഡ്മിനെ ബന്ധപ്പെടുക.');
+    return;
+  }
+  hideAll();
+  document.getElementById('self-registration').classList.remove('hidden');
+  document.getElementById('self-reg-name').value = '';
+  document.getElementById('self-reg-class').value = '';
+  document.getElementById('self-reg-category').value = '';
+  document.getElementById('self-reg-gender').value = '';
+  document.getElementById('self-reg-msg').style.display = 'none';
+  document.getElementById('self-reg-success').classList.add('hidden');
+  document.getElementById('self-reg-success').innerHTML = '';
+  document.querySelector('#self-registration .card').classList.remove('hidden');
+  renderProgramCheckboxes('self-reg-programs', 'self-prog', '', null);
+}
+
+function onSelfRegClassChange(cls){
+  const category = cls ? getCategoryFromClass(cls) : '';
+  document.getElementById('self-reg-category').value = category;
+  renderProgramCheckboxes('self-reg-programs', 'self-prog', category, null);
+}
+
+async function submitSelfRegistration(){
+  const name = document.getElementById('self-reg-name').value.trim();
+  const cls = document.getElementById('self-reg-class').value;
+  const gender = document.getElementById('self-reg-gender').value;
+  const msgEl = document.getElementById('self-reg-msg');
+  msgEl.style.display = 'none';
+
+  if(!DB.settings.nabiEnabled){ showToast('❌ നബിദിനം പരിപാടി ഓഫാണ്.'); return; }
+  if(!name){ msgEl.textContent = 'പേര് നൽകുക'; msgEl.style.display = 'block'; return; }
+  if(!cls){ msgEl.textContent = 'ക്ലാസ് തിരഞ്ഞെടുക്കുക'; msgEl.style.display = 'block'; return; }
+  if(!gender){ msgEl.textContent = 'ലിംഗം തിരഞ്ഞെടുക്കുക'; msgEl.style.display = 'block'; return; }
+
+  const checkedBoxes = document.querySelectorAll('#self-reg-programs input[type="checkbox"]:checked');
+  if(checkedBoxes.length === 0){ msgEl.textContent = 'ഒരു പ്രോഗ്രാമെങ്കിലും തിരഞ്ഞെടുക്കുക'; msgEl.style.display = 'block'; return; }
+
+  const selectedPrograms = [];
+  for(const cb of checkedBoxes){
+    const prog = DB.nabiPrograms.find(p => p.id === cb.value);
+    if(prog) selectedPrograms.push(prog.name);
+  }
+
+  const category = getCategoryFromClass(cls);
+  const existing = DB.parentRegistrations.find(r => r.studentName.toLowerCase() === name.toLowerCase() && r.class === cls && r.gender === gender);
+  if(existing){ msgEl.textContent = 'ഈ വിദ്യാർത്ഥി ഇതിനകം രജിസ്റ്റർ ചെയ്തിട്ടുണ്ട്'; msgEl.style.display = 'block'; return; }
+
+  const chestNumber = generateChestNumber(gender);
+  const id = 'pr_' + Date.now();
+  DB.parentRegistrations.push({
+    id, studentName: name, class: cls, category: category, gender: gender,
+    programs: selectedPrograms, status: 'pending',
+    date: new Date().toISOString().split('T')[0],
+    position: null, chestNumber: chestNumber
+  });
+  await storageSet('settings', DB.settings);
+  await storageSet('parentRegistrations', DB.parentRegistrations);
+
+  document.querySelector('#self-registration .card').classList.add('hidden');
+  const successEl = document.getElementById('self-reg-success');
+  successEl.innerHTML = `
+    <div style="font-size:2.4rem;">✅</div>
+    <h3 style="color:var(--green-deep);margin:8px 0;">${esc(name)} രജിസ്റ്റർ ചെയ്തു!</h3>
+    <p style="color:var(--ink-soft);">നിങ്ങളുടെ ചെസ്റ്റ് നമ്പർ: <strong style="color:var(--gold);font-size:1.2rem;">${esc(chestNumber)}</strong></p>
+    <p style="color:var(--ink-soft);font-size:.85rem;">ഈ രജിസ്ട്രേഷൻ അഡ്മിൻ അംഗീകരിക്കുന്നത് വരെ പെൻഡിംഗ് ആയിരിക്കും.</p>
+    <button class="btn-primary" style="margin-top:10px;" onclick="showSelfRegistration()">➕ മറ്റൊരു രജിസ്ട്രേഷൻ</button>
+  `;
+  successEl.classList.remove('hidden');
 }
 
 function studentLookup(){
@@ -1892,6 +2023,32 @@ function computeResult(regNo){
 /* ==================================================================
    NABI REGISTRATIONS - With Program Checkbox
 ================================================================== */
+function renderProgramCheckboxes(containerId, idPrefix, category, checkedNames){
+  const container = document.getElementById(containerId);
+  if(!container) return;
+  if(!category){ container.innerHTML = '<div class="empty" style="padding:8px 0;">ആദ്യം ക്ലാസ് തിരഞ്ഞെടുക്കുക</div>'; return; }
+  const programs = DB.nabiPrograms.filter(p => p.category === category).sort((a,b)=>a.name.localeCompare(b.name));
+  if(programs.length === 0){ container.innerHTML = '<div class="empty" style="padding:8px 0;">ഈ വിഭാഗത്തിൽ പ്രോഗ്രാമുകൾ ഇല്ല</div>'; return; }
+  container.innerHTML = programs.map(p => `
+    <div class="checkbox-item">
+      <input type="checkbox" id="${idPrefix}-${cssSafe(p.id)}" value="${escAttr(p.id)}" ${checkedNames && checkedNames.includes(p.name) ? 'checked' : ''}>
+      <label for="${idPrefix}-${cssSafe(p.id)}">${esc(p.name)}</label>
+    </div>
+  `).join('');
+}
+
+function onNbRegClassChange(cls){
+  const category = cls ? getCategoryFromClass(cls) : '';
+  document.getElementById('nb-reg-category').value = category;
+  renderProgramCheckboxes('nb-reg-programs', 'prog', category, null);
+}
+
+function onEditRegClassChange(cls){
+  const category = cls ? getCategoryFromClass(cls) : '';
+  document.getElementById('edit-reg-category').value = category;
+  renderProgramCheckboxes('edit-reg-programs', 'edit-prog', category, null);
+}
+
 function renderNabiRegistrations(main){
   const isAdmin = currentUser.role === 'admin';
   const isBoys = currentUser.role === 'boys';
@@ -1921,7 +2078,7 @@ function renderNabiRegistrations(main){
       <div class="form-grid">
         <div class="field"><label>വിദ്യാർത്ഥിയുടെ പേര്</label><input id="nb-reg-name" placeholder="പേര്"></div>
         <div class="field"><label>ക്ലാസ്</label>
-          <select id="nb-reg-class" onchange="document.getElementById('nb-reg-category').value=getCategoryFromClass(this.value)">
+          <select id="nb-reg-class" onchange="onNbRegClassChange(this.value)">
             <option value="">-- തിരഞ്ഞെടുക്കുക --</option>
             ${[1,2,3,4,5,6,7,8,9,10].map(c => `<option value="${c}">${c}</option>`).join('')}
           </select>
@@ -1936,19 +2093,32 @@ function renderNabiRegistrations(main){
       <div class="field">
         <label>📌 പ്രോഗ്രാമുകൾ തിരഞ്ഞെടുക്കുക</label>
         <div class="program-checkbox-grid" id="nb-reg-programs">
-          ${allPrograms.map(p => `
-            <div class="checkbox-item">
-              <input type="checkbox" id="prog-${cssSafe(p.id)}" value="${escAttr(p.id)}">
-              <label for="prog-${cssSafe(p.id)}">${esc(p.name)}</label>
-            </div>
-          `).join('')}
+          <div class="empty" style="padding:8px 0;">ആദ്യം ക്ലാസ് തിരഞ്ഞെടുക്കുക</div>
         </div>
       </div>
       <div id="nb-reg-msg" class="err-msg" style="display:none;"></div>
       <button class="btn-primary" onclick="submitLeaderRegistration('${currentUser.role}')">📝 രജിസ്റ്റർ ചെയ്യുക</button>
     </div>
     ` : ''}
-    
+
+    ${isAdmin ? `
+    <div class="card">
+      <div class="title">🗑️ പ്രോഗ്രാം എൻട്രീസ് ഒഴിവാക്കുക</div>
+      <div class="field">
+        <label>പ്രോഗ്രാം തിരഞ്ഞെടുക്കുക</label>
+        <select id="nb-remove-program">
+          <option value="">-- തിരഞ്ഞെടുക്കുക --</option>
+          ${allPrograms.map(p => `<option value="${escAttr(p.name)}">${esc(p.name)}</option>`).join('')}
+        </select>
+      </div>
+      <button class="btn-outline" style="border-color:var(--danger);color:var(--danger);" onclick="removeProgramEntries()">🗑️ ഈ പ്രോഗ്രാമിലെ എൻട്രീസ് ഒഴിവാക്കുക</button>
+      <div style="border-top:1px solid #EFE9D8;margin:16px 0;"></div>
+      <div class="title" style="color:var(--danger);">⚠️ എല്ലാ എൻട്രീസും ക്ലിയർ ചെയ്യുക</div>
+      <div style="font-size:.85rem;color:var(--ink-soft);margin-bottom:10px;">നിലവിലുള്ള മുഴുവൻ രജിസ്ട്രേഷൻ എൻട്രീസും (Pending, Approved, Rejected — എല്ലാം) ശാശ്വതമായി ഡിലീറ്റ് ചെയ്യും. ഈ പ്രവർത്തനം തിരികെയാക്കാൻ കഴിയില്ല.</div>
+      <button class="btn-outline" style="border-color:var(--danger);background:var(--danger);color:#fff;" onclick="clearAllNbEntries()">🗑️ എല്ലാ എൻട്രീസും ക്ലിയർ ചെയ്യുക</button>
+    </div>
+    ` : ''}
+
     <div class="nabi-tabs">
       <button class="nabi-tab active" onclick="renderNabiRegsView('pending')">⏳ പെൻഡിംഗ് (${pending.length})</button>
       <button class="nabi-tab" onclick="renderNabiRegsView('approved')">✅ അംഗീകരിച്ചു (${approved.length})</button>
@@ -2040,6 +2210,34 @@ function renderNabiRegsTable(view, isAdmin, isBoys, isGirls, isUsthad){
   return html;
 }
 
+async function removeProgramEntries(){
+  const select = document.getElementById('nb-remove-program');
+  const program = select ? select.value : '';
+  if(!program){ showToast('⚠️ ഒരു പ്രോഗ്രാം തിരഞ്ഞെടുക്കുക'); return; }
+  const affected = DB.parentRegistrations.filter(r => r.programs && r.programs.includes(program));
+  if(affected.length === 0){ showToast('ℹ️ ഈ പ്രോഗ്രാമിൽ എൻട്രീസ് ഒന്നും ഇല്ല'); return; }
+  if(!confirm(`"${program}" എന്ന പ്രോഗ്രാമിൽ നിന്ന് ${affected.length} എൻട്രീസ് ഒഴിവാക്കണോ? (വിദ്യാർത്ഥികളുടെ മറ്റ് പ്രോഗ്രാമുകൾ നിലനിർത്തും)`)) return;
+  DB.parentRegistrations.forEach(r => {
+    if(r.programs && r.programs.includes(program)){
+      r.programs = r.programs.filter(p => p !== program);
+    }
+  });
+  await storageSet('parentRegistrations', DB.parentRegistrations);
+  showToast(`✅ "${program}" പ്രോഗ്രാമിലെ ${affected.length} എൻട്രീസ് ഒഴിവാക്കി`);
+  renderNabiRegistrations(document.getElementById('admin-main'));
+}
+
+async function clearAllNbEntries(){
+  const total = DB.parentRegistrations.length;
+  if(total === 0){ showToast('ℹ️ എൻട്രീസ് ഒന്നും ഇല്ല'); return; }
+  if(!confirm(`⚠️ മൊത്തം ${total} രജിസ്ട്രേഷൻ എൻട്രീസും ശാശ്വതമായി ഡിലീറ്റ് ചെയ്യണോ? ഈ പ്രവർത്തനം തിരികെയാക്കാൻ കഴിയില്ല.`)) return;
+  if(!confirm('ഒരിക്കൽ കൂടി ഉറപ്പാക്കുക: എല്ലാ എൻട്രീസും ഇപ്പോൾ ക്ലിയർ ചെയ്യുകയാണ്. തുടരണോ?')) return;
+  DB.parentRegistrations = [];
+  await storageSet('parentRegistrations', DB.parentRegistrations);
+  showToast(`✅ എല്ലാ എൻട്രീസും (${total}) ക്ലിയർ ചെയ്തു`);
+  renderNabiRegistrations(document.getElementById('admin-main'));
+}
+
 async function approveNabiReg(id){
   const reg = DB.parentRegistrations.find(r => r.id === id);
   if(!reg) return;
@@ -2073,7 +2271,7 @@ function editNabiReg(id){
       <div class="form-grid">
         <div class="field"><label>പേര്</label><input id="edit-reg-name" value="${escAttr(reg.studentName)}"></div>
         <div class="field"><label>ക്ലാസ്</label>
-          <select id="edit-reg-class" onchange="document.getElementById('edit-reg-category').value=getCategoryFromClass(this.value)">
+          <select id="edit-reg-class" onchange="onEditRegClassChange(this.value)">
             ${[1,2,3,4,5,6,7,8,9,10].map(c => `<option value="${c}" ${reg.class==c?'selected':''}>${c}</option>`).join('')}
           </select>
         </div>
@@ -2082,14 +2280,7 @@ function editNabiReg(id){
           <select id="edit-reg-gender"><option value="Boys" ${reg.gender==='Boys'?'selected':''}>Boys</option><option value="Girls" ${reg.gender==='Girls'?'selected':''}>Girls</option></select>
         </div>
         <div class="field"><label>പ്രോഗ്രാമുകൾ</label>
-          <div class="program-checkbox-grid">
-            ${DB.nabiPrograms.map(p => `
-              <div class="checkbox-item">
-                <input type="checkbox" id="edit-prog-${cssSafe(p.id)}" value="${escAttr(p.id)}" ${reg.programs && reg.programs.includes(p.name) ? 'checked' : ''}>
-                <label for="edit-prog-${cssSafe(p.id)}">${esc(p.name)}</label>
-              </div>
-            `).join('')}
-          </div>
+          <div class="program-checkbox-grid" id="edit-reg-programs"></div>
         </div>
       </div>
       <div class="modal-actions">
@@ -2099,6 +2290,7 @@ function editNabiReg(id){
     </div>
   `;
   document.body.appendChild(modal);
+  renderProgramCheckboxes('edit-reg-programs', 'edit-prog', reg.category, reg.programs);
 }
 
 async function saveEditNabiReg(id){
